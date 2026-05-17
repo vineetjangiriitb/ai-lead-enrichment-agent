@@ -1,0 +1,641 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "documentId": {
+          "__rl": true,
+          "value": "1S7GhYWS1fQjbSZ_IYKCQ3GIaOhxFdi7g81SS-K1_T8Q",
+          "mode": "list",
+          "cachedResultName": "myflow",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1S7GhYWS1fQjbSZ_IYKCQ3GIaOhxFdi7g81SS-K1_T8Q/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1S7GhYWS1fQjbSZ_IYKCQ3GIaOhxFdi7g81SS-K1_T8Q/edit#gid=0"
+        },
+        "event": "rowAdded",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "51ea3ddc-f1f0-4fef-ab86-2828c84d837b",
+      "name": "Google Sheets Trigger",
+      "credentials": {
+        "googleSheetsTriggerOAuth2Api": {
+          "id": "ucCQfrWnrPM3bdhp",
+          "name": "Google Sheets Trigger OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "425a2008-9100-4041-97d6-d8966e727919",
+              "name": "full_name",
+              "value": "Rahul Verma",
+              "type": "string"
+            },
+            {
+              "id": "1ffd4a06-20f8-4341-b40a-5c5aa8c24c19",
+              "name": "headline",
+              "value": "Civil Engineering Student at IIT Delhi",
+              "type": "string"
+            },
+            {
+              "id": "6edb98ce-d81a-49be-991c-74d8bd759a1a",
+              "name": "summary",
+              "value": "Final year student interested in structural design and construction management.",
+              "type": "string"
+            },
+            {
+              "id": "d7c40e12-a210-49ad-8ae8-3f19e94bba80",
+              "name": "top_experience",
+              "value": "IIT Delhi — B.Tech Civil Engineering",
+              "type": "string"
+            },
+            {
+              "id": "efc12f88-83fc-410d-b0af-f06ac20a9a99",
+              "name": "skills_str",
+              "value": "AutoCAD, STAAD Pro, structural analysis, concrete design",
+              "type": "string"
+            },
+            {
+              "id": "762d5108-0e96-499b-ad65-37882167bb5d",
+              "name": "linkedin_url",
+              "value": "={{$json.linkedin_url}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        208,
+        0
+      ],
+      "id": "94551cd6-f91b-4880-95fa-6205b9c94ac3",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=AIzaSyA8bh-qiRG30syp1D-_VymebBc4tbCdztc",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [\n    {\n      \"parts\": [\n        {\n          \"text\": \"You are a B2B sales intelligence assistant. Given this LinkedIn profile, return ONLY valid JSON with no markdown, no backticks, no explanation.\\n\\nProfile:\\nName: {{$json.full_name}}\\nHeadline: {{$json.headline}}\\nSummary: {{$json.summary}}\\nExperience: {{$json.top_experience}}\\nSkills: {{$json.skills_str}}\\n\\nReturn exactly this JSON structure:\\n{\\\"fit_score\\\": \\\"high\\\" or \\\"med\\\" or \\\"low\\\", \\\"pain_points\\\": [\\\"signal 1\\\", \\\"signal 2\\\"], \\\"icp_match_reason\\\": \\\"one sentence\\\", \\\"skip\\\": false}\\n\\nScore high if: senior IC or decision-maker, SaaS or tech company, mentions automation or AI tools. Score low if: student, non-tech, or profile too sparse. Set skip true only if low.\"\n        }\n      ]\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        416,
+        0
+      ],
+      "id": "394c1b80-ee74-45d4-a039-64b046273a39",
+      "name": "HTTP Request",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst profile = $('Edit Fields').first().json;\n\nconst raw = input.candidates[0].content.parts[0].text;\nconst cleaned = raw.replace(/```json|```/g, \"\").trim();\nconst parsed = JSON.parse(cleaned);\n\nconst pain_points = Array.isArray(parsed.pain_points) \n  ? parsed.pain_points.join(\", \") \n  : parsed.pain_points;\n\nreturn [{\n  json: {\n    linkedin_url: profile.linkedin_url,\n    full_name: profile.full_name,\n    headline: profile.headline,\n    summary: profile.summary,\n    fit_score: parsed.fit_score,\n    pain_points: pain_points,\n    icp_match_reason: parsed.icp_match_reason,\n    skip: parsed.skip\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        624,
+        0
+      ],
+      "id": "6aab83a1-d4d0-449b-a124-7f9e8a28f0ee",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "95957010-2e5d-4895-a657-fb21341da079",
+              "leftValue": "={{$json.skip}}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        832,
+        0
+      ],
+      "id": "5339ee8f-cef9-44b9-a0d4-701b7a577c7e",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=AIzaSyA8bh-qiRG30syp1D-_VymebBc4tbCdztc",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [\n    {\n      \"parts\": [\n        {\n          \"text\": \"You are a senior SDR writing a cold outreach email. Return ONLY valid JSON with no markdown, no backticks.\\n\\nProspect details:\\nName: {{$json.full_name}}\\nHeadline: {{$json.headline}}\\nPain points: {{$json.pain_points}}\\nWhy they fit: {{$json.icp_match_reason}}\\n\\nRules:\\n- Subject: one specific hook referencing their role or company\\n- Body: exactly 3 lines. Line 1: one sharp observation about their work. Line 2: one concrete value prop tied to their pain points. Line 3: a soft low-friction CTA.\\n- No 'I hope this finds you well'. No fluff. No buzzwords.\\n\\nReturn exactly this JSON:\\n{\\\"subject\\\": \\\"...\\\", \\\"body\\\": \\\"...\\\"}\"\n        }\n      ]\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1040,
+        -96
+      ],
+      "id": "45f4a050-f73f-44bf-94fd-c3c22ed3630b",
+      "name": "HTTP Request1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst profile = $('Edit Fields').first().json;\nconst enrichment = $('Code in JavaScript').first().json;\n\nconst raw = input.candidates[0].content.parts[0].text;\nconst cleaned = raw.replace(/```json|```/g, \"\").trim();\nconst parsed = JSON.parse(cleaned);\n\nreturn [{\n  json: {\n    linkedin_url: profile.linkedin_url,\n    full_name: profile.full_name,\n    headline: profile.headline,\n    fit_score: enrichment.fit_score,\n    pain_points: enrichment.pain_points,\n    subject: parsed.subject,\n    email_draft: parsed.body,\n    status: \"done\"\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1248,
+        -96
+      ],
+      "id": "325a03fe-4886-4348-a953-56ba84041fe0",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1S7GhYWS1fQjbSZ_IYKCQ3GIaOhxFdi7g81SS-K1_T8Q",
+          "mode": "list",
+          "cachedResultName": "myflow",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1S7GhYWS1fQjbSZ_IYKCQ3GIaOhxFdi7g81SS-K1_T8Q/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1S7GhYWS1fQjbSZ_IYKCQ3GIaOhxFdi7g81SS-K1_T8Q/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "linkedin_url": "={{$('Edit Fields').first().json.linkedin_url}}",
+            "fit_score": "={{$json.fit_score}}",
+            "pain_points": "={{$json.pain_points}}",
+            "subject": "={{$json.subject}}",
+            "email_draft": "={{$json.email_draft}}",
+            "status": "=done",
+            "full_name": "={{$json.full_name}}",
+            "headline": "={{$json.headline}}"
+          },
+          "matchingColumns": [
+            "linkedin_url"
+          ],
+          "schema": [
+            {
+              "id": "linkedin_url",
+              "displayName": "linkedin_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "company",
+              "displayName": "company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "role",
+              "displayName": "role",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fit_score",
+              "displayName": "fit_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "pain_points",
+              "displayName": "pain_points",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "subject",
+              "displayName": "subject",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "email_draft",
+              "displayName": "email_draft",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "full_name",
+              "displayName": "full_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "headline",
+              "displayName": "headline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1456,
+        -96
+      ],
+      "id": "18642d7d-2f06-4528-800c-0e7da391041c",
+      "name": "Update row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "P3IHyGHLp0dxaeFb",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1S7GhYWS1fQjbSZ_IYKCQ3GIaOhxFdi7g81SS-K1_T8Q",
+          "mode": "list",
+          "cachedResultName": "myflow",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1S7GhYWS1fQjbSZ_IYKCQ3GIaOhxFdi7g81SS-K1_T8Q/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1S7GhYWS1fQjbSZ_IYKCQ3GIaOhxFdi7g81SS-K1_T8Q/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {
+            "linkedin_url": "={{$('Edit Fields').first().json.linkedin_url}}"
+          },
+          "matchingColumns": [
+            "linkedin_url"
+          ],
+          "schema": [
+            {
+              "id": "linkedin_url",
+              "displayName": "linkedin_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "full_name",
+              "displayName": "full_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "headline",
+              "displayName": "headline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fit_score",
+              "displayName": "fit_score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "pain_points",
+              "displayName": "pain_points",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "subject",
+              "displayName": "subject",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "email_draft",
+              "displayName": "email_draft",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "summary",
+              "displayName": "summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "icp_match_reason",
+              "displayName": "icp_match_reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "skip",
+              "displayName": "skip",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1040,
+        96
+      ],
+      "id": "ccdab989-650b-4e3e-bdc5-c3c6b93562e2",
+      "name": "Update row in sheet1",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "P3IHyGHLp0dxaeFb",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Google Sheets Trigger": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update row in sheet1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "2defc65a-22eb-4119-bb38-ed35da82bde5",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "843bafa5bfc176a09b2f6af7dca2eec140a94463570e18431965f4573d597f06"
+  },
+  "id": "VTdIzZ4c2f4BgiGq",
+  "tags": []
+}
